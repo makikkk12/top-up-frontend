@@ -185,3 +185,10 @@ input[type='text']:focus {
 a {
   color: var(--accent);
 }
+
+.back-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 14px;
+  text-decoration: none;
+}
