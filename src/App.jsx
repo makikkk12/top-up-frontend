@@ -151,7 +151,7 @@ function OrderStatus({ orderId }) {
       <p>{order.game} — for player ID {order.playerId}</p>
       {order.status !== 'paid' && (
         <p className="hint">
-          This updates automatically once PayMongo confirms your payment. If you already paid,
+          This updates automatically once Xendit confirms your payment. If you already paid,
           this can take a few seconds.
         </p>
       )}
