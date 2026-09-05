@@ -149,12 +149,13 @@ function OrderStatus({ orderId }) {
       <h2>{order.status === 'paid' ? 'Payment confirmed ✅' : 'Waiting for payment confirmation…'}</h2>
       <p>Order ID: {order.id}</p>
       <p>{order.game} — for player ID {order.playerId}</p>
-      {order.status !== 'paid' && (
+            {order.status !== 'paid' && (
         <p className="hint">
           This updates automatically once Xendit confirms your payment. If you already paid,
           this can take a few seconds.
         </p>
       )}
+      <a href="/" className="back-link">← Back to store</a>
     </div>
   );
 }
