@@ -7,7 +7,9 @@
 
 export const GAMES = {
   'Mobile Legends': {
-    note: '6 digit ID + 4 digit zone (e.g. 123456789 (1234))',
+    note: '6-9 digit Player ID',
+    serverNote: '4-5 digit Server ID (Zone ID)',
+    requiresServerId: true,
     packages: [
       { id: 'ml-56', label: '56 diamonds', price: 65 },
       { id: 'ml-278', label: '278 diamonds', price: 299 },
@@ -17,6 +19,7 @@ export const GAMES = {
   },
   'Free Fire': {
     note: '9-12 digit player ID',
+    requiresServerId: false,
     packages: [
       { id: 'ff-100', label: '100 diamonds', price: 65 },
       { id: 'ff-310', label: '310 diamonds', price: 199 },
@@ -26,6 +29,7 @@ export const GAMES = {
   },
   'PUBG Mobile': {
     note: 'numeric character ID',
+    requiresServerId: false,
     packages: [
       { id: 'pubg-60', label: '60 UC', price: 65 },
       { id: 'pubg-325', label: '325 UC', price: 319 },

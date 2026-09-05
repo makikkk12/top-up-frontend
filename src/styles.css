@@ -147,6 +147,41 @@ input[type='text']:focus {
   margin: 0 0 12px;
 }
 
+.verify-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.verify-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-result {
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.verify-found {
+  color: var(--success);
+}
+
+.verify-error {
+  color: var(--danger);
+}
+
+.verify-warning {
+  color: var(--text-secondary);
+}
+
 .checkout-btn {
   width: 100%;
   padding: 14px;

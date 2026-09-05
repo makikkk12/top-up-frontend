@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { GAMES } from './catalog.js';
-import { createOrder, getOrder } from './api.js';
+import { createOrder, getOrder, verifyPlayerId } from './api.js';
 
 function fmt(n) {
   return '₱' + n.toLocaleString();
@@ -10,16 +10,76 @@ function Storefront() {
   const gameNames = Object.keys(GAMES);
   const [game, setGame] = useState(gameNames[0]);
   const [playerId, setPlayerId] = useState('');
+  const [serverId, setServerId] = useState('');
   const [pkgIndex, setPkgIndex] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Verification state: idle | checking | found | not_found | unsupported | service_down
+  const [verifyState, setVerifyState] = useState('idle');
+  const [verifiedNickname, setVerifiedNickname] = useState('');
+
   const pkg = pkgIndex !== null ? GAMES[game].packages[pkgIndex] : null;
+  const needsServerId = GAMES[game].requiresServerId;
 
   function handleGameChange(next) {
     setGame(next);
     setPkgIndex(null);
     setError('');
+    setPlayerId('');
+    setServerId('');
+    resetVerification();
+  }
+
+  function resetVerification() {
+    setVerifyState('idle');
+    setVerifiedNickname('');
+  }
+
+  function handlePlayerIdChange(value) {
+    setPlayerId(value);
+    resetVerification();
+  }
+
+  function handleServerIdChange(value) {
+    setServerId(value);
+    resetVerification();
+  }
+
+  async function handleVerify() {
+    if (!playerId.trim()) {
+      setError('Enter your Player ID first.');
+      return;
+    }
+    if (needsServerId && !serverId.trim()) {
+      setError('Enter your Server ID first.');
+      return;
+    }
+    setError('');
+    setVerifyState('checking');
+
+    try {
+      const result = await verifyPlayerId({
+        game,
+        playerId: playerId.trim(),
+        serverId: serverId.trim(),
+      });
+
+      if (!result.supported) {
+        setVerifyState('unsupported');
+      } else if (result.serviceDown) {
+        setVerifyState('service_down');
+      } else if (result.verified) {
+        setVerifyState('found');
+        setVerifiedNickname(result.nickname);
+      } else {
+        setVerifyState('not_found');
+      }
+    } catch (err) {
+      // Network failure talking to our own backend — treat the same as a
+      // down verification service, never block checkout over this.
+      setVerifyState('service_down');
+    }
   }
 
   async function handleCheckout() {
@@ -28,19 +88,31 @@ function Storefront() {
       setError('Enter your in-game ID first.');
       return;
     }
+    if (needsServerId && !serverId.trim()) {
+      setError('Enter your Server ID first.');
+      return;
+    }
     if (!pkg) {
       setError('Choose a package first.');
+      return;
+    }
+    if (verifyState === 'not_found') {
+      setError('That ID could not be found. Double-check it before continuing.');
       return;
     }
 
     setLoading(true);
     try {
+      const combinedPlayerId = needsServerId
+        ? `${playerId.trim()} (${serverId.trim()})`
+        : playerId.trim();
+
       const { checkoutUrl } = await createOrder({
         packageId: pkg.id,
-        playerId: playerId.trim(),
+        playerId: combinedPlayerId,
         game,
       });
-      // Send the buyer to PayMongo's hosted checkout page. They'll be
+      // Send the buyer to Xendit's hosted checkout page. They'll be
       // redirected back to CHECKOUT_SUCCESS_URL / CHECKOUT_CANCEL_URL
       // (configured in the backend's .env) once they've paid or bailed.
       window.location.href = checkoutUrl;
@@ -71,9 +143,52 @@ function Storefront() {
         type="text"
         placeholder={GAMES[game].note}
         value={playerId}
-        onChange={(e) => setPlayerId(e.target.value)}
+        onChange={(e) => handlePlayerIdChange(e.target.value)}
       />
       <p className="hint">{GAMES[game].note}</p>
+
+      {needsServerId && (
+        <>
+          <label className="field-label">Server ID</label>
+          <input
+            type="text"
+            placeholder={GAMES[game].serverNote}
+            value={serverId}
+            onChange={(e) => handleServerIdChange(e.target.value)}
+          />
+          <p className="hint">{GAMES[game].serverNote}</p>
+        </>
+      )}
+
+      <button
+        className="verify-btn"
+        onClick={handleVerify}
+        disabled={verifyState === 'checking'}
+        type="button"
+      >
+        {verifyState === 'checking' ? 'Checking…' : 'Verify ID'}
+      </button>
+
+      {verifyState === 'found' && (
+        <p className="verify-result verify-found">
+          ✓ Account found: <strong>{verifiedNickname}</strong>
+        </p>
+      )}
+      {verifyState === 'not_found' && (
+        <p className="verify-result verify-error">
+          ✗ No account found with this ID. Please double-check it.
+        </p>
+      )}
+      {verifyState === 'service_down' && (
+        <p className="verify-result verify-warning">
+          Couldn't verify automatically right now — double-check your ID before paying.
+        </p>
+      )}
+      {verifyState === 'unsupported' && (
+        <p className="verify-result verify-warning">
+          Live verification isn't available for this game yet — double-check your ID before paying.
+        </p>
+      )}
 
       <div className="package-grid">
         {GAMES[game].packages.map((p, i) => (
@@ -106,7 +221,7 @@ function Storefront() {
       </button>
 
       <p className="footnote">
-        You'll be redirected to a secure PayMongo checkout page to complete payment.
+        You'll be redirected to a secure Xendit checkout page to complete payment.
       </p>
     </div>
   );
@@ -149,7 +264,7 @@ function OrderStatus({ orderId }) {
       <h2>{order.status === 'paid' ? 'Payment confirmed ✅' : 'Waiting for payment confirmation…'}</h2>
       <p>Order ID: {order.id}</p>
       <p>{order.game} — for player ID {order.playerId}</p>
-            {order.status !== 'paid' && (
+      {order.status !== 'paid' && (
         <p className="hint">
           This updates automatically once Xendit confirms your payment. If you already paid,
           this can take a few seconds.
